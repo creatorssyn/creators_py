@@ -21,6 +21,9 @@ api_key = ""
 # API url
 api_url = "http://get.creators.com/"
 
+# API version
+api_version = 0.1
+
 # Make an API request
 # @param endpoint string API url
 # @param parse_json bool if True, parse the result as JSOn and return the parsed object
@@ -30,7 +33,10 @@ def __api_request(endpoint, parse_json=True):
 	if api_key == "":
 		raise ApiError('API key must be set')
 	
-	cmd = 'curl --silent -L --header "X_API_KEY: '+api_key+'" '+api_url+endpoint
+	cmd = 'curl --silent -L --header "X_API_KEY: '+api_key+\
+			'" --header "X_API_VERSION: '+str(api_version)+'" '+\
+			api_url+endpoint
+	
 	ret = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE).stdout.read()
 	
 	# Check for HTTP error messages
