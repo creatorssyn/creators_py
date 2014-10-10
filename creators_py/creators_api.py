@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
 """
-Creators GET API interface
-Copyright (C) 2014 Creators.com
+Creators GET API interface v0.2
+Full API docs: http://get.creators.com/docs/wiki
+@copyright (c) 2014 Creators.com
 @author Brandon Telle <btelle@creators.com>
 """
 
@@ -22,7 +23,7 @@ api_key = ""
 api_url = "http://get.creators.com/"
 
 # API version
-api_version = 0.1
+api_version = 0.2
 
 # Make an API request
 # @param endpoint string API url
@@ -119,7 +120,11 @@ def download_file(url, destination):
 	else:
 		raise ApiError("Destination is a directory")
 	
-	
+# Download a zip archive of the entire contents of a release
+# @param release_id int the unique ID of the release to download
+# @param destination string path to the location the file should be saved to
+# @throws ApiError if destination is not a writeable file or release is not found
+# @return bool True if file is downloaded successfully
 def download_zip(release_id, destination):
 	if not os.path.isdir(destination):
 		try:

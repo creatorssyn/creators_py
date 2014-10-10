@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='Creators Python Libraries',
-    version='0.1',
+    version='0.2',
     packages=[],
     license='GNU General Public License v3',
     long_description=open('README.txt').read(),
