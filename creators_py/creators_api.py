@@ -119,6 +119,34 @@ def download_file(url, destination):
 	else:
 		raise ApiError("Destination is a directory")
 	
+	
+def download_zip(release_id, destination):
+	if not os.path.isdir(destination):
+		try:
+			f = open(destination, 'w')
+			
+			contents = __api_request('/api/files/zip/'+str(release_id), parse_json=False)
+			
+			if contents[0] == '{': 					# Poor man's JSON check
+				contents = json.loads(contents)
+				try:
+					if type(contents) is dict and contents['error'] > 0:
+						raise ApiError(contents['message'], contents['error'])
+				
+				except:
+					raise ApiError("Unexpected content type: JSON")
+			
+			f.write(contents)
+			f.close()
+			return True
+		except IOError:
+			raise ApiError("Destination is unavailable or unwriteable")
+		except ApiError:
+			raise
+	else:
+		raise ApiError("Destination is a directory")
+	
+
 # API Exception class
 class ApiError(Exception):
 	def __init__(self, value, errno=0):

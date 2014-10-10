@@ -1,4 +1,4 @@
-import unittest, sys, os, hashlib
+import unittest, sys, os, hashlib, subprocess, shlex
 from creators_py import creators_api
 
 # This is a demo user key. These tests are written specifically 
@@ -71,6 +71,37 @@ class TestAPI(unittest.TestCase):
 		
 		self.assert_(hash == file['sha1'])
 		os.remove(dest)
+		return
+		
+	def test_zip(self):
+		dest = "test_api_zip"
+		dir = 'unzip'
+		self.assertRaises(TypeError, creators_api.download_zip) # TypeError: argument required
+		self.assertRaises(TypeError, creators_api.download_zip, -1) # TypeError
+		self.assertRaises(creators_api.ApiError, creators_api.download_zip, -1, dest) # 404
+		
+		release = creators_api.get_releases('tma', limit=1)[0]
+		
+		self.assert_(creators_api.download_zip(release['id'], dest))
+		
+		ret = subprocess.Popen(shlex.split('unzip -d '+dir+' '+dest), stdout=subprocess.PIPE).stdout.read()
+		
+		for file in os.listdir(dir):
+			found = False;
+			for f in release['files']:
+				if f['filename'] == file:
+					found = True
+					
+					fh = open(os.path.join(dir, file), 'rb')
+					hash = hashlib.sha1(fh.read()).hexdigest()
+					fh.close()
+					
+					self.assert_(hash == f['sha1'])
+			self.assert_(found == True)
+			os.remove(os.path.join(dir, file))
+			
+		os.remove(dest)
+		os.rmdir(dir)
 		return
 			
 if __name__ == '__main__':
