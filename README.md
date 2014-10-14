@@ -12,6 +12,7 @@ Python interface to Creators GET API. Full docs available here: [http://get.crea
 - `download_file` - Download a file
 - `download_zip` - Download a release zip
 - `syn` - SYN the server
+- `authenticate` - Authenticate to the server without and API key
 - `__api_request` - Make an API request
 - `ApiError` - API Exception class
 
