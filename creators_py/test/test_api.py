@@ -31,9 +31,11 @@ class TestAPI(unittest.TestCase):
     
     def test_features(self):
         features = creators_api.get_features()
-        
         self.assert_(type(features) is list)
         self.assert_(len(features) == 4)
+        
+        all = creators_api.get_features(get_all=True)
+        self.assert_(len(all) == 5)
     
     def test_feature_details(self):
         self.assertRaises(TypeError, creators_api.get_feature_details) # TypeError: argument required

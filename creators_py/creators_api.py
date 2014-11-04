@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 """
-Creators GET API interface v0.3
+Creators GET API interface v0.3.1
 Full API docs: http://get.creators.com/docs/wiki
 @author Brandon Telle <btelle@creators.com>
 @copyright (c) 2014 Creators <www.creators.com>
@@ -23,7 +23,7 @@ api_key = ""
 api_url = "http://get.creators.com/"
 
 # API version
-api_version = 0.3
+api_version = 0.31
 
 # API key length
 api_key_length = 40
@@ -92,11 +92,12 @@ def authenticate(username, password):
 def syn():
     return __api_request('api/etc/syn')
     
-# Get a list of available features
+# Get a list of available active features
 # @param limit int number of results to return
+# @param get_all bool if true, results will include inactive features
 # @return list of features
-def get_features(limit=1000):
-    return __api_request('api/features/get_list/json/NULL/'+str(limit)+'/0')
+def get_features(limit=1000, get_all=False):
+    return __api_request('api/features/get_list/json/NULL/'+str(limit)+'/0?get_all='+str(int(get_all)))
 
 # Get details on a feature
 # @param filecode string unique filecode for the feature
