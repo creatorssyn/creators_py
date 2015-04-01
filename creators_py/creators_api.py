@@ -1,13 +1,22 @@
 #!/usr/bin/python
 
 """
-Creators GET API interface v0.3.1
+Creators GET API interface v0.3.2
 Full API docs: http://get.creators.com/docs/wiki
 @author Brandon Telle <btelle@creators.com>
-@copyright (c) 2014 Creators <www.creators.com>
+@copyright (c) 2015 Creators <www.creators.com>
 """
 
 import subprocess, shlex, re, urllib, os.path
+
+# Python 3+ puts urlencode in urllib.parse
+try:
+    from urllib import parse
+    use_parse = True
+except:
+    use_parse = False
+    
+# We need some way to parse JSON responses
 try:
     import json
 except ImportError:
@@ -15,6 +24,14 @@ except ImportError:
         import simplejson as json
     except ImportError:
         raise ImportError("A JSON library is required to use Creators_API")
+ 
+# Try to use pycURL instead of system calls
+try:
+    import pycurl
+    from io import BytesIO
+    use_pycurl = True
+except ImportError:
+    use_pycurl = False
 
 # User's API Key
 api_key = ""
@@ -23,7 +40,7 @@ api_key = ""
 api_url = "http://get.creators.com/"
 
 # API version
-api_version = 0.31
+api_version = 0.32
 
 # API key length
 api_key_length = 40
@@ -33,28 +50,63 @@ api_key_length = 40
 # @param parse_json bool if True, parse the result as JSOn and return the parsed object
 # @throws ApiError if an error code is returned by the API
 # @return parsed JSON object, or raw return string
-def __api_request(endpoint, parse_json=True, post_data={}):
-    if api_key == "" and len(post_data.keys()) == 0:
+def __api_request(endpoint, parse_json=True, post_data={}, destination=''):
+    if api_key == "" and len(post_data) == 0:
         raise ApiError('API key must be set')
     
     data = ''
-    if len(post_data.keys()) > 0:
-        data = urllib.urlencode(post_data)
+    if len(post_data) > 0:
+        try:
+            data = urllib.urlencode(post_data)
+        except:
+            try:
+                data = urllib.parse.urlencode(post_data)
+            except:
+                raise ApiError('Cannot parse post string')
     
-    cmd = 'curl --silent -L --header "X_API_KEY: '+api_key+\
-            '" --header "X_API_VERSION: '+str(api_version)+'" '
-    
-    if data != '':
-        cmd += '-X POST --data "'+data+'" '
+    if use_pycurl:
+        c = pycurl.Curl()
+        c.setopt(c.URL, api_url+endpoint)
         
-    cmd += api_url+endpoint
-    
-    ret = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE).stdout.read()
+        if data != '':
+            c.setopt(c.POSTFIELDS, data)
+        
+        c.setopt(c.HTTPHEADER, ['X_API_KEY: '+api_key, 'X_API_VERSION: '+str(api_version)])
+        c.setopt(c.FOLLOWLOCATION, True)
+        
+        buffer = BytesIO()
+        c.setopt(c.WRITEDATA, buffer)
+        c.perform()
+        c.close()
+        ret = buffer.getvalue()
+        
+        try:
+            ret = ret.decode('UTF-8')
+        except:
+            if destination != '':
+                f = open(destination, 'wb')
+                f.write(ret)
+                f.close()
+                ret = True
+            else:
+                raise ApiError('Cannot parse API response')
+        
+    else:    
+        cmd = 'curl --silent -L --header "X_API_KEY: '+api_key+\
+                '" --header "X_API_VERSION: '+str(api_version)+'" '
+        
+        if data != '':
+            cmd += '-X POST --data "'+data+'" '
+            
+        cmd += api_url+endpoint
+        
+        ret = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE).stdout.read()
     
     # Check for HTTP error messages
-    err = re.search('Error ([0-9]+): (.*)', ret)
-    if err != None:
-        raise ApiError(err.group(2), err.group(1))
+    if type(ret) is str:
+        err = re.search('Error ([0-9]+): (.*)', ret)
+        if err != None:
+            raise ApiError(err.group(2), err.group(1))
     
     # Parse JSON if required
     if parse_json:
@@ -123,17 +175,21 @@ def get_releases(filecode, offset=0, limit=10, start_date='', end_date=''):
 def download_file(url, destination):
     if not os.path.isdir(destination):
         try:
+            contents = __api_request(url, parse_json=False, destination=destination)
+            
+            if type(contents) is bool:
+                return contents
+            
             f = open(destination, 'w')
-            
-            contents = __api_request(url, parse_json=False)
-            
-            if contents[0] == '{':                     # Poor man's JSON check
+            if len(contents) and contents[0] == '{':                     # Poor man's JSON check
                 contents = json.loads(contents)
                 try:
                     if type(contents) is dict and contents['error'] > 0:
+                        f.close()
                         raise ApiError(contents['message'], contents['error'])
                 
                 except:
+                    f.close()
                     raise ApiError("Unexpected content type: JSON")
             
             f.write(contents)
@@ -154,17 +210,21 @@ def download_file(url, destination):
 def download_zip(release_id, destination):
     if not os.path.isdir(destination):
         try:
+            contents = __api_request('/api/files/zip/'+str(release_id), parse_json=False, destination=destination)
+            if type(contents) is bool:
+                return contents
+            
             f = open(destination, 'w')
             
-            contents = __api_request('/api/files/zip/'+str(release_id), parse_json=False)
-            
-            if contents[0] == '{':                     # Poor man's JSON check
+            if len(contents) > 0 and contents[0] == '{':                     # Poor man's JSON check
                 contents = json.loads(contents)
                 try:
                     if type(contents) is dict and contents['error'] > 0:
+                        f.close()
                         raise ApiError(contents['message'], contents['error'])
                 
                 except:
+                    f.close()
                     raise ApiError("Unexpected content type: JSON")
             
             f.write(contents)
